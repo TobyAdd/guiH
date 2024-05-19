@@ -1,3 +1,5 @@
+# note
+guiH is difficult to code, and during the coding process, I didn't anticipate the nuances I encountered, which completely broke the framework. Unfortunately, I wasted time and could have already fixed GDH on the existing graphical interface (ImGui) instead of writing my own. The project is closed.
 # guiH
 wip сustom window mode for opengl windows based on the swapbuffers hook
 # screenshot
