@@ -34,6 +34,8 @@ struct guiH_LineDrawFlags
 
 struct guiH_IO
 {
+    bool enabled = false;
+
     HWND Window;
     HGLRC Context_Original;
     HGLRC Context_New;
@@ -56,6 +58,15 @@ struct guiH_IO
     char WantTextboxChar;
 };
 
+struct guiH_Label
+{
+    std::string Caption;
+    guiH_Point Position;
+#if 0
+    guiH_Label textExample = {"Example", {10, 10}};
+#endif
+};
+
 struct guiH_Button
 {
     std::string Caption;
@@ -63,12 +74,14 @@ struct guiH_Button
     guiH_Size Size;
 
     std::function<void()> handlerButton = []() {};
+
+    bool WantToClick = false;
+
     void setButtonPressHandler(std::function<void()> func) { handlerButton = func; }
 #if 0
-    guiH_Button Button;
-    Button.setButtonPressHandler([]() 
-    {
-        //Action on press
+    guiH_Button button = {"Button Example", {5, 5}, {190, 20}};
+    button.setButtonPressHandler([]() {
+        
     });
 #endif
 };
@@ -80,12 +93,13 @@ struct guiH_Checkbox
     bool Checked = false;
 
     std::function<void(bool)> handlerCheckbox = [](bool) {};
+
+    bool WantToClick = false;
     void setCheckboxPressHandler(std::function<void(bool)> func) { handlerCheckbox = func; }
 #if 0
-    guiH_Button Button;
-    Button.setButtonPressHandler([]() 
-    {
-        //Action on press
+    guiH_Checkbox checkbox = {"Checkbox Example", {5, 5}};
+    Checkbox1.setCheckboxPressHandler([](bool checked) {
+
     });
 #endif
 };
@@ -98,16 +112,35 @@ struct guiH_TextBox
 
     std::string TextHint;
 
+    bool Clicked = false;
     bool Focused = false;
 
     std::function<void(std::string)> handleTextboxEdited = [](std::string) {};
     void setEditedTextHandler(std::function<void(std::string)> func) { handleTextboxEdited = func; }
 #if 0
-    guiH_TextBox Textbox;
-    std::string text;
-    Textbox.setEditedTextHandler([](std::string edited_text) 
+    guiH_TextBox textbox = {"", {5, 5}, {180, 18}};
+	textbox1.TextHint = "Textbox Example";
+	textbox1.setEditedTextHandler([](std::string edited_text) 
     {
-        text = edited_text;
+
+    });
+#endif
+};
+
+struct guiH_Slider
+{
+    float Value;
+    float MinValue;
+    float MaxValue;
+    guiH_Point Position;
+    float Length;
+
+    std::function<void(float)> handlerSlider = [](float) {};
+    void setSliderChangedHandler(std::function<void(float)> func) { handlerSlider = func; }
+#if 0
+    guiH_Slider slider1 = {0.5f, 0.0f, 100.0f, {10, 35}, 175};
+    slider1.setSliderChangedHandler([](float value) {
+        
     });
 #endif
 };
@@ -117,13 +150,14 @@ struct guiH_Window
     std::string Caption;
     guiH_Point Position;
     guiH_Size Size;
-    bool isDraggingWindow = false;
-    bool WantToClickOnButton = false;
-    bool WantToClickOnCheckbox = false;
 
+    bool isDraggingWindow = false;
+
+    std::vector<guiH_Label> Labels;
     std::vector<guiH_Button> Buttons;
     std::vector<guiH_Checkbox> Checkboxes;
     std::vector<guiH_TextBox> TextBoxes;
+    std::vector<guiH_Slider> Sliders;
 
     void Render();
 };
@@ -347,6 +381,53 @@ namespace guiH
                 IO.WantTextboxChar = static_cast<char>(wParam);
             }
         }
+        
+        if (!IO.enabled) return ret;
+
+        switch (Msg) {
+            case WM_LBUTTONDBLCLK:
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            // case WM_MBUTTONDBLCLK:
+            // case WM_MBUTTONDOWN:
+            // case WM_MBUTTONUP:
+            // case WM_MOUSEACTIVATE:
+            // case WM_MOUSEHOVER:
+            // case WM_MOUSEHWHEEL:
+            // case WM_MOUSELEAVE:
+            // case WM_MOUSEMOVE:
+            // case WM_MOUSEWHEEL:
+            // case WM_NCLBUTTONDBLCLK:
+            // case WM_NCLBUTTONDOWN:
+            // case WM_NCLBUTTONUP:
+            // case WM_NCMBUTTONDBLCLK:
+            // case WM_NCMBUTTONDOWN:
+            // case WM_NCMBUTTONUP:
+            // case WM_NCMOUSEHOVER:
+            // case WM_NCMOUSELEAVE:
+            // case WM_NCMOUSEMOVE:
+            // case WM_NCRBUTTONDBLCLK:
+            // case WM_NCRBUTTONDOWN:
+            // case WM_NCRBUTTONUP:
+            // case WM_NCXBUTTONDBLCLK:
+            // case WM_NCXBUTTONDOWN:
+            // case WM_NCXBUTTONUP:
+            // case WM_RBUTTONDBLCLK:
+            // case WM_RBUTTONDOWN:
+            // case WM_RBUTTONUP:
+            // case WM_XBUTTONDBLCLK:
+            // case WM_XBUTTONDOWN:
+            // case WM_XBUTTONUP:
+            // case WM_HOTKEY:
+            // case WM_KEYDOWN:
+            // case WM_KEYUP:
+            // case WM_KILLFOCUS:
+            // case WM_SETFOCUS:
+            // case WM_SYSKEYDOWN:
+            // case WM_SYSKEYUP:
+                ret = true;
+        }
+
         return ret;
     }
 }
@@ -360,8 +441,23 @@ void guiH_Window::Render()
 {
     using namespace guiH;
 
+    if (!IO.enabled) return;
+
     float screenWidth = IO.DisplaySize.Width;
     float screenHeight = IO.DisplaySize.Height;
+
+    if (Position.X >= 0 && Position.X + Size.Width > screenWidth) {
+        Position.X = screenWidth - Size.Width;
+    } else if (Position.X < 0) {
+        Position.X = 0;
+    }
+
+    if (Position.Y >= 0 && Position.Y + Size.Height > screenHeight) {
+        Position.Y = screenHeight - Size.Height;
+    } else if (Position.Y < 0) {
+        Position.Y = 0;
+    }
+
 
     // if (IO.MousePos.X >= Position.X && IO.MousePos.X <= Position.X + Size.Width &&
     //     IO.MousePos.Y >= Position.Y && IO.MousePos.Y <= Position.Y + Size.Height) {
@@ -373,7 +469,10 @@ void guiH_Window::Render()
     if (IO.MousePos.X >= Position.X && IO.MousePos.X <= Position.X + Size.Width &&
         IO.MousePos.Y >= Position.Y && IO.MousePos.Y <= Position.Y + 20)
     {
-        if (IO.MouseHold[0] && !IO.WindowWantToDrag && !isDraggingWindow && !WantToClickOnButton)
+        // bool isMouseOutsideDisplay = IO.MousePos.X < 0 || IO.MousePos.X >= IO.DisplaySize.Width || 
+        //     IO.MousePos.Y < 0 || IO.MousePos.Y >= IO.DisplaySize.Height;
+
+        if (IO.MouseHold[0] && !IO.WindowWantToDrag && !isDraggingWindow)
         {
             isDraggingWindow = true;
             IO.WindowWantToDrag = true;
@@ -404,38 +503,35 @@ void guiH_Window::Render()
     Graphics::DrawFilledRect(Position.X, Position.Y + 25, Size.Width, Size.Height - 25, {27, 27, 29});
     Graphics::DrawOutLine(Position.X, Position.Y, Size.Width, Size.Height, 1, {255, 255, 255});
 
+    for (size_t i = 0; i < Labels.size(); i++)
+    {
+        Graphics::Font::RenderText(Position.X + Labels[i].Position.X, Position.Y + 25 + Labels[i].Position.Y, Labels[i].Caption.c_str(), {255, 255, 255});
+    }
+
     for (size_t i = 0; i < Buttons.size(); i++)
     {
         bool hover = false;
         bool over = false;
 
-        if (IO.MousePos.X >= Position.X + Buttons[i].Position.X && IO.MousePos.X <= Position.X + Buttons[i].Position.X + Buttons[i].Size.Width &&
+        if (!IO.WindowWantToDrag && IO.MousePos.X >= Position.X + Buttons[i].Position.X && IO.MousePos.X <= Position.X + Buttons[i].Position.X + Buttons[i].Size.Width &&
             IO.MousePos.Y >= Position.Y + Buttons[i].Position.Y + 25 && IO.MousePos.Y <= Position.Y + Buttons[i].Position.Y + 25 + Buttons[i].Size.Height)
         {
-            if (!IO.WindowWantToDrag)
+            hover = true;
+
+            if (IO.MouseDown[0])
             {
-                hover = true;
+                Buttons[i].WantToClick = true;                    
+                over = true;
+            }
 
-                if (IO.MouseDown[0])
-                {
-                    over = true;
-                }
-
-                if (IO.MouseDown[0] && !WantToClickOnButton)
-                {
-                    WantToClickOnButton = true;
-                }
-
-                if (WantToClickOnButton && IO.MouseRelease[0])
-                {
-                    WantToClickOnButton = false;
-                    Buttons[i].handlerButton();
-                }
+            if (Buttons[i].WantToClick && IO.MouseRelease[0])
+            {
+                Buttons[i].WantToClick = false;
+                Buttons[i].handlerButton();
             }
         }
-        else if (IO.MouseRelease[0])
-        {
-            WantToClickOnButton = false;
+        else {
+            Buttons[i].WantToClick = false; 
         }
 
         float textWidth = Graphics::Font::CalculateTextWidth(Buttons[i].Caption.c_str());
@@ -452,31 +548,27 @@ void guiH_Window::Render()
         bool hover = false;
         bool over = false;
 
-        if (IO.MousePos.X >= Position.X + Checkboxes[i].Position.X && IO.MousePos.X <= Position.X + Checkboxes[i].Position.X + 25 + Graphics::Font::CalculateTextWidth(Checkboxes[i].Caption.c_str()) &&
+        if (!IO.WindowWantToDrag && IO.MousePos.X >= Position.X + Checkboxes[i].Position.X && IO.MousePos.X <= Position.X + Checkboxes[i].Position.X + 25 + Graphics::Font::CalculateTextWidth(Checkboxes[i].Caption.c_str()) &&
             IO.MousePos.Y >= Position.Y + Checkboxes[i].Position.Y + 25 && IO.MousePos.Y <= Position.Y + Checkboxes[i].Position.Y + 20 + 25)
         {
             hover = true;
 
             if (IO.MouseDown[0])
             {
+                if (!Checkboxes[i].WantToClick)
+                    Checkboxes[i].WantToClick = true;
                 over = true;
             }
 
-            if (IO.MouseDown[0] && !WantToClickOnCheckbox)
+            if (Checkboxes[i].WantToClick && IO.MouseRelease[0])
             {
-                WantToClickOnCheckbox = true;
-            }
-
-            if (WantToClickOnCheckbox && IO.MouseRelease[0])
-            {
-                WantToClickOnCheckbox = false;
+                Checkboxes[i].WantToClick = false;
                 Checkboxes[i].Checked = !Checkboxes[i].Checked;
                 Checkboxes[i].handlerCheckbox(Checkboxes[i].Checked);
             }
         }
-        else if (IO.MouseRelease[0])
-        {
-            WantToClickOnCheckbox = false;
+        else {
+            Checkboxes[i].WantToClick = false;
         }
 
         Graphics::DrawFilledRect(Position.X + Checkboxes[i].Position.X, Position.Y + 25 + Checkboxes[i].Position.Y, 20, 20,
@@ -508,22 +600,25 @@ void guiH_Window::Render()
     {
         Graphics::DrawFilledRect(Position.X + TextBoxes[i].Position.X, Position.Y + 25 + TextBoxes[i].Position.Y, TextBoxes[i].Size.Width, TextBoxes[i].Size.Height, {52, 52, 52});
 
-        if (TextBoxes[i].Focused)
-        {
-            float cursorX = Position.X + TextBoxes[i].Position.X + Graphics::Font::CalculateTextWidth(TextBoxes[i].Text.c_str()) + 3;
-            float cursorY = Position.Y + 25 + TextBoxes[i].Position.Y + 1;
-
-            Graphics::DrawFilledRect(cursorX, cursorY, 1, TextBoxes[i].Size.Height - 2, {255, 255, 255});
-        }
-
-        if (TextBoxes[i].Text.empty() && !TextBoxes[i].TextHint.empty() && !TextBoxes[i].Focused)
-        {
-            Graphics::Font::RenderText(Position.X + TextBoxes[i].Position.X + 3, Position.Y + 25 + TextBoxes[i].Position.Y + 1, TextBoxes[i].TextHint.c_str(), {128, 128, 128});
-        }
-
         if (!TextBoxes[i].Text.empty())
         {
-            Graphics::Font::RenderText(Position.X + TextBoxes[i].Position.X + 3, Position.Y + 25 + TextBoxes[i].Position.Y + 1, TextBoxes[i].Text.c_str(), {255, 255, 255});
+            std::string displayedText = TextBoxes[i].Text;
+            if (Graphics::Font::CalculateTextWidth(displayedText.c_str()) > TextBoxes[i].Size.Width - 6)
+            {
+                while (Graphics::Font::CalculateTextWidth(displayedText.c_str()) > TextBoxes[i].Size.Width - 6)
+                {
+                    displayedText = displayedText.substr(1);
+                }
+            }
+            if (TextBoxes[i].Focused)
+            {
+                displayedText += "|";
+            }
+            Graphics::Font::RenderText(Position.X + TextBoxes[i].Position.X + 3, Position.Y + 25 + TextBoxes[i].Position.Y + 1, displayedText.c_str(), {255, 255, 255});
+        }
+        else if (!TextBoxes[i].TextHint.empty() && !TextBoxes[i].Focused)
+        {
+            Graphics::Font::RenderText(Position.X + TextBoxes[i].Position.X + 3, Position.Y + 25 + TextBoxes[i].Position.Y + 1, TextBoxes[i].TextHint.c_str(), {128, 128, 128});
         }
 
         if (TextBoxes[i].Focused && IO.WantToWriteTextboxChar)
@@ -546,7 +641,7 @@ void guiH_Window::Render()
             IO.WantTextboxChar = NULL;
         }
 
-        if (IO.MousePos.X >= Position.X + TextBoxes[i].Position.X && IO.MousePos.X <= Position.X + TextBoxes[i].Position.X + TextBoxes[i].Size.Width &&
+        if (!IO.WindowWantToDrag && IO.MousePos.X >= Position.X + TextBoxes[i].Position.X && IO.MousePos.X <= Position.X + TextBoxes[i].Position.X + TextBoxes[i].Size.Width &&
             IO.MousePos.Y >= Position.Y + 25 + TextBoxes[i].Position.Y && IO.MousePos.Y <= Position.Y + 25 + TextBoxes[i].Position.Y + TextBoxes[i].Size.Height)
         {
             if (IO.MouseDown[0])
@@ -570,5 +665,39 @@ void guiH_Window::Render()
                 }
             }
         }
+    }
+
+    for (size_t i = 0; i < Sliders.size(); i++)
+    {
+        bool hover = false;
+        bool over = false;
+
+        if (!IO.WindowWantToDrag && IO.MousePos.X >= Position.X + Sliders[i].Position.X && IO.MousePos.X <= Position.X + Sliders[i].Position.X + Sliders[i].Length &&
+            IO.MousePos.Y >= Position.Y + Sliders[i].Position.Y && IO.MousePos.Y <= Position.Y + Sliders[i].Position.Y + 20)
+        {
+            hover = true;
+
+            if (IO.MouseDown[0])
+            {
+                over = true;
+
+                float ratio = (IO.MousePos.X - (Position.X + Sliders[i].Position.X)) / Sliders[i].Length;
+                float resultValue = ratio * (Sliders[i].MaxValue - Sliders[i].MinValue);
+                
+                if (resultValue >= Sliders[i].MinValue && resultValue <= Sliders[i].MaxValue)
+                {
+                    Sliders[i].Value = resultValue;
+                    Sliders[i].handlerSlider(Sliders[i].Value);
+                }
+            }
+        }
+
+        Graphics::DrawFilledRect(Position.X + Sliders[i].Position.X, Position.Y + Sliders[i].Position.Y, Sliders[i].Length, 20,
+                                over ? guiH_RGB({131, 160, 203}) : (hover ? guiH_RGB({147, 180, 228}) : guiH_RGB({164, 201, 254})));
+
+        float handleX = Position.X + Sliders[i].Position.X + (Sliders[i].Value - Sliders[i].MinValue) / (Sliders[i].MaxValue - Sliders[i].MinValue) * Sliders[i].Length - 5;
+        float handleY = Position.Y + Sliders[i].Position.Y - 5;
+
+        Graphics::DrawFilledRect(handleX, handleY, 10, 30, {200, 200, 200});
     }
 }
